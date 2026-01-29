@@ -1,0 +1,5 @@
+#!/bin/bash
+echo "Enter a numerical value"
+read x
+echo "The given value is: $x"
+
