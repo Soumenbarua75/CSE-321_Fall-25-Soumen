@@ -1,0 +1,93 @@
+diff --git a/Makefile b/Makefile
+index dde08b1..63b9865 100644
+--- a/Makefile
++++ b/Makefile
+@@ -143,6 +143,9 @@ UPROGS=\
+ 	$U/_logstress\
+ 	$U/_forphan\
+ 	$U/_dorphan\
++	$U/_add\
++	$U/_addInp\
++	$U/_ps\
+ 
+ fs.img: mkfs/mkfs README $(UPROGS)
+ 	mkfs/mkfs fs.img README $(UPROGS)
+@@ -164,7 +167,7 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
+ 	then echo "-gdb tcp::$(GDBPORT)"; \
+ 	else echo "-s -p $(GDBPORT)"; fi)
+ ifndef CPUS
+-CPUS := 3
++CPUS := 1
+ endif
+ 
+ QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index 076d965..794ea86 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -101,6 +101,7 @@ extern uint64 sys_unlink(void);
+ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
++extern uint64 sys_ps(void);
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -126,6 +127,7 @@ static uint64 (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_ps]      sys_ps,
+ };
+ 
+ void
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index 3dd926d..9b84903 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -20,3 +20,4 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_ps 22
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index 419e727..cee84d0 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -7,6 +7,15 @@
+ #include "proc.h"
+ #include "vm.h"
+ 
++
++// ps
++uint64
++sys_ps(void)
++{
++procdump(); // print the process table to the console
++return 0;
++}
++
+ uint64
+ sys_exit(void)
+ {
+diff --git a/user/user.h b/user/user.h
+index ac84de9..df2229c 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -24,6 +24,7 @@ int getpid(void);
+ char* sys_sbrk(int,int);
+ int pause(int);
+ int uptime(void);
++int ps(void); // prototype for the new ps system call
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/user/usys.pl b/user/usys.pl
+index c5d4c3a..65e729b 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -42,3 +42,4 @@ entry("getpid");
+ entry("sbrk");
+ entry("pause");
+ entry("uptime");
++entry("ps");
